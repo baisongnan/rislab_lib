@@ -1,5 +1,7 @@
 import time
+# change this according to your path
 from rislab_lib.mocap_udp import UdpReceiver
+
 
 if __name__ == '__main__':
     receiver = UdpReceiver.UdpRigidBodies()
