@@ -100,11 +100,27 @@ class UdpRigidBodies(object):
 
 class MyCustomizedUdp(UdpRigidBodies):
     def __init__(self, udp_ip="0.0.0.0", udp_port=22222, order=4, cutoff=16,
-                 ftype='lowpass', design='cheby2', rs=58, filter_on=False):
+                 ftype='lowpass', design='cheby2', rs=58, filter_on=False, saver_on=True):
         UdpRigidBodies.__init__(self, udp_ip=udp_ip, udp_port=udp_port, )
+        self.standard_saver_on = saver_on
         self.data_processor = MyRealTimeProcessor(order, cutoff, ftype, design, rs, self.sample_rate, self.sample_time, filter_on)
         self.filter_on = False
-        self.saver = savemat.DataSaver('Abs_time', 'X', 'Y', 'Z', 'QW', 'QX', 'QY', 'QZ')
+        if self.standard_saver_on:
+            self.saver = savemat.DataSaver('Abs_time', 'X', 'Y', 'Z', 'QW', 'QX', 'QY', 'QZ')
+        self.added_saver = None
+        self.args = None
+        self.added_saver_on = False
+
+    def add_saver(self, *args):
+        self.added_saver = savemat.DataSaver(*args)
+        self.added_saver_on = True
+
+    def add_element(self, *args):
+        self.args = args
+
+    def save_data_added_saver(self, path):
+        time.sleep(2)
+        self.added_saver.save2mat(path)
 
     def start_thread(self):
         if not self._udpThread_on:
@@ -128,10 +144,13 @@ class MyCustomizedUdp(UdpRigidBodies):
                 self._udp_data = udp_data_temp
                 self.data_processor.step(self._udp_data, )
                 self._udp_data_ready.set()
-                self.saver.add_elements(time.time(),
-                                        self.data_processor.X, self.data_processor.Y, self.data_processor.Z,
-                                        self.data_processor.QW, self.data_processor.QX,
-                                        self.data_processor.QY, self.data_processor.QZ, )
+                if self.standard_saver_on:
+                    self.saver.add_elements(time.time(),
+                                            self.data_processor.X, self.data_processor.Y, self.data_processor.Z,
+                                            self.data_processor.QW, self.data_processor.QX,
+                                            self.data_processor.QY, self.data_processor.QZ, )
+                if self.added_saver_on:
+                    self.added_saver.add_elements(*self.args)
                 # print(self.udp_flag)
             print('upd thread stopped')
 

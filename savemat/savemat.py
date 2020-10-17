@@ -13,10 +13,13 @@ class DataSaver(object):
             else:
                 self.varList = self.varList + ([],)
 
-    def add_elements(self,*args):
+    def add_elements(self, *args):
         if len(args) == self.varNum:
             for i in range(len(args)):
-                self.varList[i].append(args[i])
+                if not(args[i] is None):
+                    self.varList[i].append(args[i])
+                else:
+                    self.varList[i].append(0)
         else:
             print('element number error')
 
