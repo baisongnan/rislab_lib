@@ -5,6 +5,7 @@ import threading
 from tqdm import tqdm
 
 from ..data_processor.GeneralFcn import MyRealTimeProcessor
+from ..data_processor.GeneralFcn import MyRealTimeProcessorSimplified
 from ..savemat import savemat
 
 
@@ -63,8 +64,8 @@ class UdpRigidBodies(object):
             # main loop
 
             while not self._udpStop:
+
                 self.udp_flag = self.udp_flag + 1
-                self._synced_event.clear()
                 udp_data_temp, addr = self._sock.recvfrom(100)  # buffer size is 8192 bytes
                 self._udp_data_ready.clear()
                 self._udp_data = udp_data_temp
@@ -74,6 +75,8 @@ class UdpRigidBodies(object):
                     self._synced_event_2.wait()
                     self._synced_event_2.clear()
                 # print(self.udp_flag)
+                # print('A')
+                # self._synced_event.clear()
             print('upd thread stopped')
 
     def stop_thread(self, ):
@@ -93,6 +96,7 @@ class UdpRigidBodies(object):
         # get data synced, this function may block your program by frequency of udp
         self._sync_on = True
         self._synced_event.wait()
+        self._synced_event.clear()
         temp_data = self._udp_data
         self._synced_event_2.set()
         return temp_data
@@ -162,3 +166,76 @@ class MyCustomizedUdp(UdpRigidBodies):
 
     def save_data(self, path):
         self.saver.save2mat(path)
+
+
+class MyCustomizedUdp_3body(UdpRigidBodies):
+    def __init__(self, udp_ip="0.0.0.0", udp_port=22222, order=4, cutoff=16,
+                 ftype='lowpass', design='cheby2', rs=58, filter_on=False, saver_on=True):
+        UdpRigidBodies.__init__(self, udp_ip=udp_ip, udp_port=udp_port, )
+        self.standard_saver_on = saver_on
+        self.data_processor = MyRealTimeProcessorSimplified(order, cutoff, ftype, design, rs, self.sample_rate, self.sample_time, filter_on)
+        self.data_processor_2 = MyRealTimeProcessorSimplified(order, cutoff, ftype, design, rs, self.sample_rate, self.sample_time,
+                                                  filter_on)
+        self.data_processor_3 = MyRealTimeProcessorSimplified(order, cutoff, ftype, design, rs, self.sample_rate, self.sample_time,
+                                                  filter_on)
+        self.filter_on = False
+        if self.standard_saver_on:
+            self.saver = savemat.DataSaver('Abs_time', 'X', 'Y', 'Z', 'QW', 'QX', 'QY', 'QZ')
+        self.added_saver = None
+        self.args = None
+        self.added_saver_on = False
+
+    def add_saver(self, *args):
+        self.added_saver = savemat.DataSaver(*args)
+        self.added_saver_on = True
+
+    def add_element(self, *args):
+        self.args = args
+
+    def save_data_added_saver(self, path):
+        time.sleep(2)
+        self.added_saver.save2mat(path)
+
+    def start_thread(self):
+        if not self._udpThread_on:
+            self._udpThread = threading.Thread(target=self._udp_worker_sync, args=(), )
+            self._udp_data = 1
+            self._udpThread.start()
+            self._udpThread_on = True
+            time.sleep(0.1)
+            print('Upd thread start')
+        else:
+            print('New upd thread is not started')
+
+    def _udp_worker_sync(self, ):
+        if not self._udpThread_on:
+            print('Receive data with data processing')
+            # main loop
+            while not self._udpStop:
+                self.udp_flag = self.udp_flag + 1
+                udp_data_temp, addr = self._sock.recvfrom(100)  # buffer size is 8192 bytes
+                self._udp_data_ready.clear()
+                self._udp_data = udp_data_temp
+                self.data_processor.step(self._udp_data[0:14], )
+                self.data_processor_2.step(self._udp_data[14:28], )
+                self.data_processor_3.step(self._udp_data[28:42], )
+                self._udp_data_ready.set()
+                # if self.standard_saver_on:
+                #     self.saver.add_elements(time.time(),
+                #                             self.data_processor.X, self.data_processor.Y, self.data_processor.Z,
+                #                             self.data_processor.QW, self.data_processor.QX,
+                #                             self.data_processor.QY, self.data_processor.QZ, )
+                # if self.added_saver_on:
+                #     self.added_saver.add_elements(*self.args)
+                # print(self.udp_flag)
+            print('upd thread stopped')
+
+    def get_data(self, ):
+        # get current data
+        self._sync_on = False
+        self._udp_data_ready.wait()
+        return self.data_processor, self.data_processor_2, self.data_processor_3
+
+    def save_data(self, path):
+        print('this function is not ready')
+        # self.saver.save2mat(path)

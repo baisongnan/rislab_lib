@@ -100,10 +100,21 @@ class IIR2Filter(object):
 
 
 class RealTimeProcessor(object):
-    def __init__(self, ):
+    def __init__(self, time_step):
+        self.time_step = time_step
+
         self.X = 0.0
         self.Y = 0.0
         self.Z = 0.0
+
+        self.X_d = 0.0
+        self.Y_d = 0.0
+        self.Z_d = 0.0
+
+        self.diff_X = Differentiator()
+        self.diff_Y = Differentiator()
+        self.diff_Z = Differentiator()
+
         self.QX = 0.0
         self.QY = 0.0
         self.QZ = 0.0
@@ -124,6 +135,10 @@ class RealTimeProcessor(object):
         self.X = x * 0.0005
         self.Y = y * 0.0005
         self.Z = z * 0.0005
+        # velocity
+        self.X_d = self.diff_X.step(self.X, self.time_step)
+        self.Y_d = self.diff_Y.step(self.Y, self.time_step)
+        self.Z_d = self.diff_Z.step(self.Z, self.time_step)
         # qaut
         self.QX = float(qx * 0.001)
         self.QY = float(qy * 0.001)
@@ -158,117 +173,3 @@ class Differentiator(object):
         temp_data_d = (data - self.data_delayed)/time_step
         self.data_delayed = data
         return temp_data_d
-
-
-class MyRealTimeProcessor(RealTimeProcessor):
-    def __init__(self, order, cutoff, ftype, design, rs, sample_rate, sample_time, filter_on):
-        RealTimeProcessor.__init__(self, )
-        self.filter_on = filter_on
-        self.sample_time = sample_time
-        self.X_f = self.X
-        self.Y_f = self.Y
-        self.Z_f = self.Z
-        self._FilterX = IIR2Filter(order, [cutoff], ftype, design=design, rs=rs, fs=sample_rate)
-        self._FilterY = IIR2Filter(order, [cutoff], ftype, design=design, rs=rs, fs=sample_rate)
-        self._FilterZ = IIR2Filter(order, [cutoff], ftype, design=design, rs=rs, fs=sample_rate)
-
-        self.X_d = 0
-        self.Y_d = 0
-        self.Z_d = 0
-        self._DifferentiatorX = Differentiator()
-        self._DifferentiatorY = Differentiator()
-        self._DifferentiatorZ = Differentiator()
-
-        self.R11_d = 0.0
-        self.R12_d = 0.0
-        self.R13_d = 0.0
-        self.R21_d = 0.0
-        self.R22_d = 0.0
-        self.R23_d = 0.0
-        self.R31_d = 0.0
-        self.R32_d = 0.0
-        self.R33_d = 0.0
-        self._DifferentiatorR11 = Differentiator()
-        self._DifferentiatorR12 = Differentiator()
-        self._DifferentiatorR13 = Differentiator()
-        self._DifferentiatorR21 = Differentiator()
-        self._DifferentiatorR22 = Differentiator()
-        self._DifferentiatorR23 = Differentiator()
-        self._DifferentiatorR31 = Differentiator()
-        self._DifferentiatorR32 = Differentiator()
-        self._DifferentiatorR33 = Differentiator()
-
-        self.wx = 0
-        self.wy = 0
-        self.wz = 0
-
-    def step(self, udp_data):
-        RealTimeProcessor.step(self, udp_data)
-        self.X_f = self._FilterX.filter(self.X)
-        self.Y_f = self._FilterY.filter(self.Y)
-        self.Z_f = self._FilterZ.filter(self.Z)
-        if self.filter_on:
-            self.X_d = self._DifferentiatorX.step(self.X_f, self.sample_time)
-            self.Y_d = self._DifferentiatorY.step(self.Y_f, self.sample_time)
-            self.Z_d = self._DifferentiatorZ.step(self.Z_f, self.sample_time)
-        else:
-            self.X_d = self._DifferentiatorX.step(self.X, self.sample_time)
-            self.Y_d = self._DifferentiatorY.step(self.Y, self.sample_time)
-            self.Z_d = self._DifferentiatorZ.step(self.Z, self.sample_time)
-
-        self.R11_d = self._DifferentiatorR11.step(self.R11, self.sample_time)
-        self.R12_d = self._DifferentiatorR12.step(self.R12, self.sample_time)
-        self.R13_d = self._DifferentiatorR13.step(self.R13, self.sample_time)
-        self.R21_d = self._DifferentiatorR21.step(self.R21, self.sample_time)
-        self.R22_d = self._DifferentiatorR22.step(self.R22, self.sample_time)
-        self.R23_d = self._DifferentiatorR23.step(self.R23, self.sample_time)
-        self.R31_d = self._DifferentiatorR31.step(self.R31, self.sample_time)
-        self.R32_d = self._DifferentiatorR32.step(self.R32, self.sample_time)
-        self.R33_d = self._DifferentiatorR33.step(self.R33, self.sample_time)
-
-        self.wx = self.R13 * self.R12_d + self.R23 * self.R22_d + self.R33 * self.R32_d
-        self.wy = self.R11 * self.R13_d + self.R21 * self.R23_d + self.R31 * self.R33_d
-        self.wz = self.R12 * self.R11_d + self.R22 * self.R21_d + self.R32 * self.R31_d
-
-
-class MyRealTimeProcessorSimplified(RealTimeProcessor):
-    def __init__(self, order, cutoff, ftype, design, rs, sample_rate, sample_time, filter_on):
-        RealTimeProcessor.__init__(self, )
-        self.filter_on = filter_on
-        self.sample_time = sample_time
-        self.X_f = self.X
-        self.Y_f = self.Y
-        self.Z_f = self.Z
-        self._FilterX = IIR2Filter(order, [cutoff], ftype, design=design, rs=rs, fs=sample_rate)
-        self._FilterY = IIR2Filter(order, [cutoff], ftype, design=design, rs=rs, fs=sample_rate)
-        self._FilterZ = IIR2Filter(order, [cutoff], ftype, design=design, rs=rs, fs=sample_rate)
-
-        self.X_d = 0
-        self.Y_d = 0
-        self.Z_d = 0
-        self._DifferentiatorX = Differentiator()
-        self._DifferentiatorY = Differentiator()
-        self._DifferentiatorZ = Differentiator()
-
-
-
-    def step(self, udp_data):
-        RealTimeProcessor.step(self, udp_data)
-        self.X_f = self._FilterX.filter(self.X)
-        self.Y_f = self._FilterY.filter(self.Y)
-        self.Z_f = self._FilterZ.filter(self.Z)
-        if self.filter_on:
-            self.X_d = self._DifferentiatorX.step(self.X_f, self.sample_time)
-            self.Y_d = self._DifferentiatorY.step(self.Y_f, self.sample_time)
-            self.Z_d = self._DifferentiatorZ.step(self.Z_f, self.sample_time)
-        else:
-            self.X_d = self._DifferentiatorX.step(self.X, self.sample_time)
-            self.Y_d = self._DifferentiatorY.step(self.Y, self.sample_time)
-            self.Z_d = self._DifferentiatorZ.step(self.Z, self.sample_time)
-
-
-
-
-
-
-
