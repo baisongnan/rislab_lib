@@ -191,9 +191,13 @@ def get_button_r1():
     return joystick.get_button(5)
 
 
-def get_button_button_l2():
+def get_button_l2():
     global joystick
     return joystick.get_button(6)
+
+def get_button_r2():
+    global joystick
+    return joystick.get_button(7)
 
 
 def get_button_share():

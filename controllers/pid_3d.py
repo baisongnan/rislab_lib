@@ -30,3 +30,13 @@ class Pid3D(object):
         self.pid_x.integrator_disable()
         self.pid_y.integrator_disable()
         self.pid_z.integrator_disable()
+
+    def integrator_pause(self):
+        self.pid_x.integrator_pause()
+        self.pid_y.integrator_pause()
+        self.pid_z.integrator_pause()
+
+    def integrator_saturation(self, min_x, max_x, min_y, max_y, min_z, max_z):
+        self.pid_x.integrator_saturation(min_x, max_x)
+        self.pid_y.integrator_saturation(min_y, max_y)
+        self.pid_z.integrator_saturation(min_z, max_z)
